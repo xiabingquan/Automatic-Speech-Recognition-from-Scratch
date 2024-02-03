@@ -1,8 +1,8 @@
 # Automatic-Speech-Recognition-from-Scratch
 An minimal Seq2Seq example of Automatic Speech Recognition (ASR) based on Transformer
 
-Before launch training, you should download the train-clean-100 and test-clean sub-sets of [LibriSpeech](https://www.openslr.org/12/),
-and then run `python3 ./prepare_librispeech.py` to prepare manifests.
+Before launch training, you should download the train and test sub-sets of [LRS2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html),
+and prepare `./data/LRS2/train.paths`、`./data/LRS2/train.text`、`./data/LRS2/train.lengths` with the format that  `train.py` requires.
 
 Training: `python3 ./train.py`
 
