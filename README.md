@@ -17,6 +17,10 @@ The following table suggests a minimal example of the above three files.
 | 2.wav       | good afternoon   | 32000         |
 | 3.wav       | nice to meet you | 18500         |
 > 💡 If you have difficulty in accessing dataset LRS2, you may use other ASR datasets, such as [LibriSpeech](https://www.openslr.org/12) or [TEDLIUM-v3](https://www.openslr.org/51/)
+> 
+> Use `torchaudio`, `ffmpeg` or any other tools to get the length information of audio
+>
+> If you are experiencing convergence issue, try subword-based tokenizers ([ref](https://github.com/google/sentencepiece)) or more sophisticated feature extractors (e.g. [1D ResNet](https://github.com/mpc001/Lipreading_using_Temporal_Convolutional_Networks/blob/0cc99fab046bd959578f2baac52e654746da4825/lipreading/models/resnet1D.py#L75)).
 
 Training: `python3 ./train.py`
 
