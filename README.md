@@ -8,14 +8,14 @@ Each line in train.paths represents the local path of an audio file.
 
 Each line in train.text represents a text sentence. 
 
-Each line in train.lengths represents an integer value indicating the length of the audio (number of original sampling points, equal to the sampling rate multiplied by the audio length).
+Each line in train.lengths represents an integer value indicating the length of the audio (number of seconds).
 
 The following table suggests a minimal example of the above three files.
 | train.paths | train.text       | train.lengths |
 | ----------- | ---------------- | ------------- |
-| 1.wav       | good morning     | 16000         |
-| 2.wav       | good afternoon   | 32000         |
-| 3.wav       | nice to meet you | 18500         |
+| 1.wav       | good morning     | 1.6         |
+| 2.wav       | good afternoon   | 2         |
+| 3.wav       | nice to meet you | 3.1         |
 > 💡 If you have difficulty in accessing dataset LRS2, you may use other ASR datasets, such as [LibriSpeech](https://www.openslr.org/12) or [TEDLIUM-v3](https://www.openslr.org/51/)
 > 
 > Use `torchaudio`, `ffmpeg` or any other tools to get the length information of audio
