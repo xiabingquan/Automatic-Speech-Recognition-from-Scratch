@@ -1,4 +1,11 @@
 # Automatic-Speech-Recognition-from-Scratch
+
+todo:
+
+- [x] (2024.2.10) release training and inference code
+- [ ] (2024.4.7) release training log and checkpoints of LRS2
+- [ ] (2024.4.10) release training log and checkpoints of LibriSpeech
+
 A minimal Seq2Seq example of Automatic Speech Recognition (ASR) based on Transformer
 
 Before launch training, you should download the train and test sub-sets of [LRS2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html),
