@@ -62,6 +62,9 @@ Usage: `python test.py <feature_extractor_type> <dataset_type> <checkpoint_path>
 
 For example, `python3 ./test.py resnet lrs2 ./ckpts/resnet_lrs2_epoch050.pt`
 
+> Use the Linux command `cat` to merge checkpoint shards.
+> For example, `cat resnet_lrs2_epoch050.pt.shard* > ./resnet_lrs2_epoch050.pt`
+
 The checkpoints are located in the `ckpts` directory, containing both the linear and 1D-ResNet feature extractors.
 
 The inference logs are located in the `log` directory, containing predictions of each sample.
