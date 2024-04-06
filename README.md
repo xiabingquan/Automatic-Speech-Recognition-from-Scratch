@@ -1,14 +1,17 @@
 # Automatic-Speech-Recognition-from-Scratch
 
-todo:
-
-- [x] (2024.2.10) release training and inference code
-- [ ] (2024.4.7) release training log and checkpoints of LRS2
-- [ ] (2024.4.10) release training log and checkpoints of LibriSpeech
-
+## Description
 A minimal Seq2Seq example of Automatic Speech Recognition (ASR) based on Transformer
 
-Before launch training, you should download the train and test sub-sets of [LRS2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html),
+It aims to serve as a thorough tutorial for new beginners who is interested in training ASR models or other sequence-to-sequence models, complying with the blog in this link [包教包会！从零实现基于Transformer的语音识别(ASR)模型😘](https://zhuanlan.zhihu.com/p/648133707)
+
+It contains almost everything you need to build a simple ASR model from scratch, such as training codes, inference codes, checkpoints, training logs and inference logs, 
+
+## Data preprocessing
+
+We use the audip part of [LRS2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html) as our dataset.
+
+Before launch training, you should download the train and test sub-sets of LRS2,
 and prepare `./data/LRS2/train.paths`、`./data/LRS2/train.text`、`./data/LRS2/train.lengths` with the format that  `train.py` requires.
 
 Each line in train.paths represents the local path of an audio file. 
@@ -23,16 +26,53 @@ The following table suggests a minimal example of the above three files.
 | 1.wav       | good morning     | 1.6         |
 | 2.wav       | good afternoon   | 2         |
 | 3.wav       | nice to meet you | 3.1         |
-> 💡 If you have difficulty in accessing dataset LRS2, you may use other ASR datasets, such as [LibriSpeech](https://www.openslr.org/12) or [TEDLIUM-v3](https://www.openslr.org/51/)
-> 
-> Use `torchaudio`, `ffmpeg` or any other tools to get the length information of audio
->
-> If you are experiencing convergence issue, try subword-based tokenizers ([ref](https://github.com/google/sentencepiece)) or more sophisticated feature extractors (e.g. [1D ResNet](https://github.com/mpc001/Lipreading_using_Temporal_Convolutional_Networks/blob/0cc99fab046bd959578f2baac52e654746da4825/lipreading/models/resnet1D.py#L75)).
 
-Training: `python3 ./train.py`
+For convenience, we have prepared the three files above, the only thing you need to do is to place audio files consistent with `./data/LRS2/train.paths`. There you are ready to go.
 
-Inference: `python3 ./test.py <ckpt_path>`
+> 💡 If you have difficulty in accessing dataset LRS2, you may use other ASR datasets, such as [LibriSpeech](https://www.openslr.org/12) or [TEDLIUM-v3](https://www.openslr.org/51/).
+> However, in our preliminary experiments of LibriSpeech, we found that the model fails to converge under the default settings. You may need to modify the training or model hyper-parameters if necessary.
+
+## Build tokenizers
+Before training, you also need to prepare tokenizers.
+In the [blog](https://zhuanlan.zhihu.com/p/648133707), we use char-based tokenizers.
+However, considering that subword-based tokenizers are more often used in the ASR task, we use subword-based tokenizers instead.
+
+Run `build_spm_tokenizer.sh` to build your subword-based tokenizer. You should replace the script's argument `save_prefix` and `txt_file_path` to fit your own data.
+
+We have already provided tokenizers, located in the directory `spm/lrs2`. You could use them directly.
 
 
-# Contact
+## training
+Usage: `python train.py <feature_extractor_type> <dataset_type>`
+
+We support two types of feature extractors: linear layer and 1D-ResNet18.
+> The 1D-ResNet18 is based on the implementation of this [repo](https://github.com/mpc001/Lipreading_using_Temporal_Convolutional_Networks).
+
+We support two types of dataset: LRS2 and LibriSpeech.
+
+For example, `python3 ./train.py resnet lrs2`.
+
+The training logs are located in the `log` directory, containing the loss history and model details.
+
+We highly encourage users to thoroughly read the codes if they want to customize their own datasets or understand the details of the training process.
+
+
+## Inference
+Usage: `python test.py <feature_extractor_type> <dataset_type> <checkpoint_path>`
+
+For example, `python3 ./test.py resnet lrs2 ./ckpts/resnet_lrs2_epoch050.pt`
+
+The checkpoints are located in the `ckpts` directory, containing both the linear and 1D-ResNet feature extractors.
+
+The inference logs are located in the `log` directory, containing predictions of each sample.
+
+
+## Warning
+This repository is slightly different from the [blog](https://zhuanlan.zhihu.com/p/648133707) mentioned above in the following aspects.
+- We use pre-norm instead of post-norm;
+- We use subword-based tokenizers instead of char-based tokenizers;
+- We add support of the feature extractor of 1D-ResNet.
+
+## Contact
 bingquanxia AT qq.com
+
