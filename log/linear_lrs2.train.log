@@ -1,0 +1,115 @@
+SubwordTokenizer(./spm/lrs2/1000_bpe.model, case=upper, vocab=1000)
+ASRDataset: 45839 samples, 734 mini-batches. batch_size: 64, batch_seconds: 256, mean batch-size: 62.45
+Transformer(
+  (frontend): LinearFeatureExtractionModel(
+    (linear): Sequential(
+      (0): Linear(in_features=80, out_features=256, bias=True)
+    )
+  )
+  (encoder): Encoder(
+    (pos_emb): Embedding(2048, 256)
+    (emb_dropout): Dropout(p=0.1, inplace=False)
+    (layers): ModuleList(
+      (0-11): 12 x EncoderLayer(
+        (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (multi_head_attn): MultiHeadAttention(
+          (dropout): Dropout(p=0.0, inplace=False)
+          (wq): Linear(in_features=256, out_features=256, bias=True)
+          (wk): Linear(in_features=256, out_features=256, bias=True)
+          (wv): Linear(in_features=256, out_features=256, bias=True)
+          (W_out): Linear(in_features=256, out_features=256, bias=True)
+        )
+        (poswise_ffn): PoswiseFFN(
+          (lin1): Linear(in_features=256, out_features=2048, bias=True)
+          (lin2): Linear(in_features=2048, out_features=256, bias=True)
+          (relu): ReLU(inplace=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+        )
+      )
+    )
+  )
+  (decoder): Decoder(
+    (tgt_emb): Embedding(1000, 256)
+    (dropout_emb): Dropout(p=0.1, inplace=False)
+    (pos_emb): Embedding(2048, 256)
+    (layers): ModuleList(
+      (0-5): 6 x DecoderLayer(
+        (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (norm3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (poswise_ffn): PoswiseFFN(
+          (lin1): Linear(in_features=256, out_features=2048, bias=True)
+          (lin2): Linear(in_features=2048, out_features=256, bias=True)
+          (relu): ReLU(inplace=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+        )
+        (dec_attn): MultiHeadAttention(
+          (dropout): Dropout(p=0.0, inplace=False)
+          (wq): Linear(in_features=256, out_features=256, bias=True)
+          (wk): Linear(in_features=256, out_features=256, bias=True)
+          (wv): Linear(in_features=256, out_features=256, bias=True)
+          (W_out): Linear(in_features=256, out_features=256, bias=True)
+        )
+        (enc_dec_attn): MultiHeadAttention(
+          (dropout): Dropout(p=0.0, inplace=False)
+          (wq): Linear(in_features=256, out_features=256, bias=True)
+          (wk): Linear(in_features=256, out_features=256, bias=True)
+          (wv): Linear(in_features=256, out_features=256, bias=True)
+          (W_out): Linear(in_features=256, out_features=256, bias=True)
+        )
+      )
+    )
+  )
+  (linear): Linear(in_features=256, out_features=1000, bias=True)
+)
+Epoch: 01/50, Loss: 18.60
+Epoch: 02/50, Loss: 7.51
+Epoch: 03/50, Loss: 6.15
+Epoch: 04/50, Loss: 5.76
+Epoch: 05/50, Loss: 5.50
+Epoch: 06/50, Loss: 5.20
+Epoch: 07/50, Loss: 4.87
+Epoch: 08/50, Loss: 4.57
+Epoch: 09/50, Loss: 4.31
+Epoch: 10/50, Loss: 4.06
+Epoch: 11/50, Loss: 3.83
+Epoch: 12/50, Loss: 3.62
+Epoch: 13/50, Loss: 3.42
+Epoch: 14/50, Loss: 3.24
+Epoch: 15/50, Loss: 3.07
+Epoch: 16/50, Loss: 2.91
+Epoch: 17/50, Loss: 2.75
+Epoch: 18/50, Loss: 2.62
+Epoch: 19/50, Loss: 2.49
+Epoch: 20/50, Loss: 2.35
+Epoch: 21/50, Loss: 2.23
+Epoch: 22/50, Loss: 2.12
+Epoch: 23/50, Loss: 2.02
+Epoch: 24/50, Loss: 1.92
+Epoch: 25/50, Loss: 1.83
+Epoch: 26/50, Loss: 1.74
+Epoch: 27/50, Loss: 1.67
+Epoch: 28/50, Loss: 1.61
+Epoch: 29/50, Loss: 1.54
+Epoch: 30/50, Loss: 1.49
+Epoch: 31/50, Loss: 1.44
+Epoch: 32/50, Loss: 1.40
+Epoch: 33/50, Loss: 1.36
+Epoch: 34/50, Loss: 1.32
+Epoch: 35/50, Loss: 1.30
+Epoch: 36/50, Loss: 1.28
+Epoch: 37/50, Loss: 1.26
+Epoch: 38/50, Loss: 1.24
+Epoch: 39/50, Loss: 1.22
+Epoch: 40/50, Loss: 1.21
+Epoch: 41/50, Loss: 1.20
+Epoch: 42/50, Loss: 1.19
+Epoch: 43/50, Loss: 1.18
+Epoch: 44/50, Loss: 1.18
+Epoch: 45/50, Loss: 1.17
+Epoch: 46/50, Loss: 1.17
+Epoch: 47/50, Loss: 1.16
+Epoch: 48/50, Loss: 1.16
+Epoch: 49/50, Loss: 1.16
+Epoch: 50/50, Loss: 1.16
