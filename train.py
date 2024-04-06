@@ -2,64 +2,102 @@
 # Contact: bingquanxia@qq.com
 
 import os
+import sys
+from dataclasses import dataclass, field
 
 import tqdm
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from tokenizer import CharTokenizer
+from tokenizer import CharTokenizer, SubwordTokenizer
 from dataloader import get_dataloader
 from models import Encoder, Decoder, Transformer
-from models import LinearFeatureExtractionModel
+from feature_extractors import LinearFeatureExtractionModel, ResNet1D
 
 
-def init_model(vocab_size):
+def init_model(vocab_size, enc_dim, num_enc_layers, num_dec_layers, feature_extractor_type):
     fbank_dim = 80
-    enc_dim = 256
     num_heads = enc_dim // 64
-    num_layers = 6
-    max_seq_len = 4096
-    feature_extractor = LinearFeatureExtractionModel(fbank_dim, enc_dim)
+    max_seq_len = 2048
+
+    if feature_extractor_type == "linear":
+        FeatureExtractor = LinearFeatureExtractionModel
+    elif feature_extractor_type == "resnet":
+        FeatureExtractor = ResNet1D
+    else:
+        raise ValueError(f"Unsupported feature extractor type: {feature_extractor_type}")
+    feature_extractor = FeatureExtractor(fbank_dim, enc_dim)
+
     encoder = Encoder(
         dropout_emb=0.1, dropout_posffn=0.1, dropout_attn=0.,
-        num_layers=num_layers, enc_dim=enc_dim, num_heads=num_heads, dff=2048, tgt_len=max_seq_len
+        num_layers=num_enc_layers, enc_dim=enc_dim, num_heads=num_heads, dff=2048, tgt_len=max_seq_len
     )
+
     decoder = Decoder(
         dropout_emb=0.1, dropout_posffn=0.1, dropout_attn=0.,
-        num_layers=num_layers, dec_dim=enc_dim, num_heads=num_heads, dff=2048, tgt_len=max_seq_len,
+        num_layers=num_dec_layers, dec_dim=enc_dim, num_heads=num_heads, dff=2048, tgt_len=max_seq_len,
         tgt_vocab_size=vocab_size
     )
+
     model = Transformer(feature_extractor, encoder, decoder, enc_dim, vocab_size)
+
     return model
 
 
 if __name__ == "__main__":
 
+    if len(sys.argv) != 3:
+        print("Usage: python train.py <feature_extractor_type> <dataset_type>")
+        sys.exit(1)
+    feature_extractor_type = sys.argv[1]
+    dataset_type = sys.argv[2]
+    assert feature_extractor_type in ["linear", "resnet"]
+    assert dataset_type in ["lrs2", "librispeech"]
+
+    if dataset_type == "lrs2":
+        t_ph = "./spm/lrs2/1000_bpe.model"
+        audio_path_file = "./data/LRS2/train.paths"
+        text_file = "./data/LRS2/train.text"
+        lengths_file = "./data/LRS2/train.lengths"
+    elif dataset_type == "librispeech":
+        t_ph = "./spm/librispeech/1000_bpe.model"
+        audio_path_file = "./data/LibriSpeech/train-clean-100.paths"
+        text_file = "./data/LibriSpeech/train-clean-100.text"
+        lengths_file = "./data/LibriSpeech/train-clean-100.lengths"
+    else:
+        raise ValueError(f"Unsupported dataset type: {dataset_type}")
+
     # define tokenizer
-    tokenizer = CharTokenizer()
+    tokenizer = SubwordTokenizer(t_ph)
+    print(tokenizer)
 
     # load data
-    with open("./data/LRS2/train.paths") as f:
+    with open(audio_path_file, 'r') as f:
         audio_paths = f.read().splitlines()
-    with open("./data/LRS2/train.text") as f:
+    with open(text_file, 'r') as f:
         transcripts = f.read().splitlines()
-    with open("./data/LRS2/train.lengths") as f:
+    with open(lengths_file, 'r') as f:
         wav_lengths = f.read().splitlines()
     wav_lengths = [float(length) for length in wav_lengths]
 
     # create checkpoint directory
-    ckpt_dir = "./.checkpoints"
+    ckpt_dir = f"./.checkpoints_{feature_extractor_type}_{dataset_type}"
     os.makedirs(ckpt_dir, exist_ok=True)
 
+    # define dataloader
     batch_size = 64
-    batch_seconds = 256         # depends on your GPU memory
+    batch_seconds = 512         # depends on your GPU memory
     data_loader = get_dataloader(
         audio_paths, transcripts, wav_lengths, tokenizer, batch_size, batch_seconds, shuffle=True
     )
 
     # define model
-    model = init_model(tokenizer.vocab)
+    vocab = tokenizer.vocab
+    enc_dim = 256
+    num_enc_layers = 12
+    num_dec_layers = 6
+    model = init_model(vocab, enc_dim, num_enc_layers, num_dec_layers, feature_extractor_type)
     print(model)
     model.train()
     # DataParallel for multi-gpu
@@ -73,7 +111,7 @@ if __name__ == "__main__":
 
     # define optimizer and scheduler
     max_lr = 4e-4
-    num_epoch = 20
+    num_epoch = 50
     num_warmup = 10000
     pcb = num_warmup / (len(data_loader) * num_epoch)       # percentage of warmup
     optimizer = torch.optim.Adam(model.parameters(), lr=max_lr)
@@ -93,6 +131,7 @@ if __name__ == "__main__":
         data_loader.dataset.shuffle()
 
         for i, batch in enumerate(data_loader, start=1):
+            
             # get batch data
             fbank_feat, feat_lens, ys_in_pad, ys_out_pad = batch
             if torch.cuda.is_available():
@@ -123,6 +162,8 @@ if __name__ == "__main__":
             })
             pbar.update(1)
         pbar.reset()
+
+        print(f"Epoch: {epoch:02d}/{num_epoch:02d}, Loss: {tot_loss / len(data_loader):.2f}")
 
         # save model
         torch.save(

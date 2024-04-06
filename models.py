@@ -56,16 +56,16 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(p)
 
         # linear projections
-        self.W_Q = nn.Linear(d_model, d_k * num_heads)
-        self.W_K = nn.Linear(d_model, d_k * num_heads)
-        self.W_V = nn.Linear(d_model, d_v * num_heads)
+        self.wq = nn.Linear(d_model, d_k * num_heads)
+        self.wk = nn.Linear(d_model, d_k * num_heads)
+        self.wv = nn.Linear(d_model, d_v * num_heads)
         self.W_out = nn.Linear(d_v * num_heads, d_model)
 
         # Normalization
         # References: <<Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification>>
-        nn.init.normal_(self.W_Q.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_k)))
-        nn.init.normal_(self.W_K.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_k)))
-        nn.init.normal_(self.W_V.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_v)))
+        nn.init.normal_(self.wq.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_k)))
+        nn.init.normal_(self.wk.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_k)))
+        nn.init.normal_(self.wv.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_v)))
         nn.init.normal_(self.W_out.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_v)))
 
     def forward(self, Q, K, V, attn_mask, **kwargs):
@@ -75,9 +75,9 @@ class MultiHeadAttention(nn.Module):
         num_heads = self.num_heads
 
         # multi_head split
-        Q = self.W_Q(Q).view(N, -1, num_heads, d_k).transpose(1, 2)
-        K = self.W_K(K).view(N, -1, num_heads, d_k).transpose(1, 2)
-        V = self.W_V(V).view(N, -1, num_heads, d_v).transpose(1, 2)
+        Q = self.wq(Q).view(N, -1, num_heads, d_k).transpose(1, 2)
+        K = self.wk(K).view(N, -1, num_heads, d_k).transpose(1, 2)
+        V = self.wv(V).view(N, -1, num_heads, d_v).transpose(1, 2)
 
         # pre-process mask
         if attn_mask is not None:
@@ -88,6 +88,7 @@ class MultiHeadAttention(nn.Module):
         # calculate attention weight
         scores = torch.matmul(Q, K.transpose(-1, -2)) / np.sqrt(d_k)
         if attn_mask is not None:
+            # -1e4: for mixed precision training
             scores.masked_fill_(attn_mask, -1e4)
         attns = torch.softmax(scores, dim=-1)  # attention weights
         attns = self.dropout(attns)
@@ -107,15 +108,15 @@ class PoswiseFFN(nn.Module):
         super(PoswiseFFN, self).__init__()
         self.d_model = d_model
         self.d_ff = d_ff
-        self.conv1 = nn.Conv1d(d_model, d_ff, 1, 1, 0)
-        self.conv2 = nn.Conv1d(d_ff, d_model, 1, 1, 0)
+        self.lin1 = nn.Linear(d_model, d_ff)
+        self.lin2 = nn.Linear(d_ff, d_model)
         self.relu = nn.ReLU(inplace=True)
         self.dropout = nn.Dropout(p=p)
 
     def forward(self, X):
-        out = self.conv1(X.transpose(1, 2))  # (N, d_model, seq_len) -> (N, d_ff, seq_len)
+        out = self.lin1(X)
         out = self.relu(out)
-        out = self.conv2(out).transpose(1, 2)  # (N, d_ff, seq_len) -> (N, d_model, seq_len)
+        out = self.lin2(out)
         out = self.dropout(out)
         return out
 
@@ -133,21 +134,25 @@ class EncoderLayer(nn.Module):
         assert dim % n == 0
         hdim = dim // n  # dimension of each attention head
         super(EncoderLayer, self).__init__()
+
         # LayerNorm
         self.norm1 = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
+        
         # MultiHeadAttention
         self.multi_head_attn = MultiHeadAttention(hdim, hdim, dim, n, dropout_attn)
+        
         # Position-wise Feedforward Neural Network
         self.poswise_ffn = PoswiseFFN(dim, dff, p=dropout_posffn)
 
     def forward(self, enc_in, attn_mask):
         # multi-head attention
-        enc_in = self.norm1(enc_in)         # pre-norm
-        out = enc_in + self.multi_head_attn(enc_in, enc_in, enc_in, attn_mask)
+        x = self.norm1(enc_in)         # pre-norm
+        out = enc_in + self.multi_head_attn(x, x, x, attn_mask)
+        
         # position-wise feed-forward networks
-        out = self.norm2(out)               # pre-norm
-        out = out + self.poswise_ffn(out)
+        x = self.norm2(out)               # pre-norm
+        out = out + self.poswise_ffn(x)
 
         return out
 
@@ -181,10 +186,12 @@ class Encoder(nn.Module):
         # add position embedding
         batch_size, seq_len, d_model = X.shape
         out = X + self.pos_emb(torch.arange(seq_len, device=X.device))  # (batch_size, seq_len, d_model)
+        
         out = self.emb_dropout(out)
         # encoder layers
         for layer in self.layers:
             out = layer(out, mask)
+        
         return out
 
 
@@ -201,26 +208,31 @@ class DecoderLayer(nn.Module):
         super(DecoderLayer, self).__init__()
         assert dim % n == 0
         hdim = dim // n
+        
         # LayerNorms
         self.norm1 = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
         self.norm3 = nn.LayerNorm(dim)
+
         # Position-wise Feed-Forward Networks
         self.poswise_ffn = PoswiseFFN(dim, dff, p=dropout_posffn)
+        
         # MultiHeadAttention, both self-attention and encoder-decoder cross attention
         self.dec_attn = MultiHeadAttention(hdim, hdim, dim, n, dropout_attn)
         self.enc_dec_attn = MultiHeadAttention(hdim, hdim, dim, n, dropout_attn)
 
     def forward(self, dec_in, enc_out, dec_mask, dec_enc_mask):
         # decoder's self-attention
-        dec_in = self.norm1(dec_in)     # pre-norm
-        dec_out = dec_in + self.dec_attn(dec_in, dec_in, dec_in, dec_mask)
+        x = self.norm1(dec_in)     # pre-norm
+        dec_out = dec_in + self.dec_attn(x, x, x, dec_mask)
+        
         # encoder-decoder cross attention
-        dec_out = self.norm2(dec_out)
-        dec_out = dec_out + self.enc_dec_attn(dec_out, enc_out, enc_out, dec_enc_mask)
+        x = self.norm2(dec_out)
+        dec_out = dec_out + self.enc_dec_attn(x, enc_out, enc_out, dec_enc_mask)
+        
         # position-wise feed-forward networks
-        dec_out = self.norm3(dec_out)
-        dec_out = dec_out + self.poswise_ffn(dec_out)
+        x = self.norm3(dec_out)
+        dec_out = dec_out + self.poswise_ffn(x)
 
         return dec_out
 
@@ -247,8 +259,10 @@ class Decoder(nn.Module):
         # output embedding
         self.tgt_emb = nn.Embedding(tgt_vocab_size, dec_dim)
         self.dropout_emb = nn.Dropout(p=dropout_emb)  # embedding dropout
+
         # position embedding
         self.pos_emb = nn.Embedding.from_pretrained(pos_sinusoid_embedding(tgt_len, dec_dim), freeze=True)
+        
         # decoder layers
         self.layers = nn.ModuleList(
             [
@@ -262,9 +276,11 @@ class Decoder(nn.Module):
         tgt_emb = self.tgt_emb(labels)
         pos_emb = self.pos_emb(torch.arange(labels.size(1), device=labels.device))
         dec_out = self.dropout_emb(tgt_emb + pos_emb)
+
         # decoder layers
         for layer in self.layers:
             dec_out = layer(dec_out, enc_out, dec_mask, dec_enc_mask)
+        
         return dec_out
 
 
@@ -283,33 +299,25 @@ class Transformer(nn.Module):
         X_lens, labels = X_lens.long(), labels.long()
         b = X.size(0)
         device = X.device
+        
         # frontend
         out, X_lens = self.frontend(X, X_lens)
         max_feat_len = out.size(1)  # compute after frontend because of optional subsampling
         max_label_len = labels.size(1)
+        
         # encoder
         enc_mask = get_len_mask(b, max_feat_len, X_lens, device)
         enc_out = self.encoder(out, X_lens, enc_mask)
+        
         # decoder
         dec_mask = get_subsequent_mask(b, max_label_len, device)
         dec_enc_mask = get_enc_dec_mask(b, max_feat_len, X_lens, max_label_len, device)
         dec_out = self.decoder(labels, enc_out, dec_mask, dec_enc_mask)
+
+        # linear
         logits = self.linear(dec_out)
 
         return logits
-
-
-class LinearFeatureExtractionModel(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int):
-        super().__init__()
-        self.linear = nn.Sequential(
-            nn.Linear(in_dim, out_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(out_dim, out_dim)
-        )
-
-    def forward(self, x, x_lens):
-        return self.linear(x), x_lens
 
 
 if __name__ == "__main__":
@@ -331,7 +339,7 @@ if __name__ == "__main__":
     feature_extractor = LinearFeatureExtractionModel(in_dim=fbank_dim, out_dim=enc_dim)
 
     with torch.no_grad():
-        output = feature_extractor(fbank_feature)
+        output, feat_lens = feature_extractor(fbank_feature, feat_lens)
     print(f"fbank_feature: {fbank_feature.shape} -> {output.shape}")
 
     encoder = Encoder(
@@ -347,4 +355,4 @@ if __name__ == "__main__":
     # forward check
     with torch.no_grad():
         logits = transformer(fbank_feature, feat_lens, labels)
-    print(logits.shape)  # (batch_size, max_label_len, vocab_size)
+    print(f"logits: {logits.shape}")  # (batch_size, max_label_len, vocab_size)
