@@ -1,41 +1,9 @@
 # coding=utf-8
 # Contact: bingquanxia@qq.com
 
-from typing import List, Tuple
-
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
-
-
-def get_len_mask(
-        b: int, max_len: int, feat_lens: torch.Tensor, device: torch.device
-) -> torch.Tensor:
-    attn_mask = torch.ones((b, max_len, max_len), device=device)
-    for i in range(b):
-        attn_mask[i, :, :feat_lens[i]] = 0
-    return attn_mask.bool()
-
-
-def get_subsequent_mask(b: int, max_len: int, device: torch.device) -> torch.Tensor:
-    """
-    Args:
-        b: batch-size.
-        max_len: the length of the whole seqeunce.
-        device: cuda or cpu.
-    """
-    mask = torch.triu(torch.ones((b, max_len, max_len), device=device), diagonal=1)
-    return mask.bool()
-
-
-def get_enc_dec_mask(
-        b: int, max_feat_len: int, feat_lens: torch.Tensor, max_label_len: int, device: torch.device
-) -> torch.Tensor:
-    attn_mask = torch.zeros((b, max_label_len, max_feat_len), device=device)  # (b, seq_q, seq_k)
-    for i in range(b):
-        attn_mask[i, :, feat_lens[i]:] = 1
-    return attn_mask.bool()
 
 
 def pos_sinusoid_embedding(seq_len, d_model):
@@ -138,20 +106,20 @@ class EncoderLayer(nn.Module):
         # LayerNorm
         self.norm1 = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
-        
+
         # MultiHeadAttention
         self.multi_head_attn = MultiHeadAttention(hdim, hdim, dim, n, dropout_attn)
-        
+
         # Position-wise Feedforward Neural Network
         self.poswise_ffn = PoswiseFFN(dim, dff, p=dropout_posffn)
 
     def forward(self, enc_in, attn_mask):
         # multi-head attention
-        x = self.norm1(enc_in)         # pre-norm
+        x = self.norm1(enc_in)  # pre-norm
         out = enc_in + self.multi_head_attn(x, x, x, attn_mask)
-        
+
         # position-wise feed-forward networks
-        x = self.norm2(out)               # pre-norm
+        x = self.norm2(out)  # pre-norm
         out = out + self.poswise_ffn(x)
 
         return out
@@ -186,12 +154,12 @@ class Encoder(nn.Module):
         # add position embedding
         batch_size, seq_len, d_model = X.shape
         out = X + self.pos_emb(torch.arange(seq_len, device=X.device))  # (batch_size, seq_len, d_model)
-        
+
         out = self.emb_dropout(out)
         # encoder layers
         for layer in self.layers:
             out = layer(out, mask)
-        
+
         return out
 
 
@@ -208,7 +176,7 @@ class DecoderLayer(nn.Module):
         super(DecoderLayer, self).__init__()
         assert dim % n == 0
         hdim = dim // n
-        
+
         # LayerNorms
         self.norm1 = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
@@ -216,20 +184,20 @@ class DecoderLayer(nn.Module):
 
         # Position-wise Feed-Forward Networks
         self.poswise_ffn = PoswiseFFN(dim, dff, p=dropout_posffn)
-        
+
         # MultiHeadAttention, both self-attention and encoder-decoder cross attention
         self.dec_attn = MultiHeadAttention(hdim, hdim, dim, n, dropout_attn)
         self.enc_dec_attn = MultiHeadAttention(hdim, hdim, dim, n, dropout_attn)
 
     def forward(self, dec_in, enc_out, dec_mask, dec_enc_mask):
         # decoder's self-attention
-        x = self.norm1(dec_in)     # pre-norm
+        x = self.norm1(dec_in)  # pre-norm
         dec_out = dec_in + self.dec_attn(x, x, x, dec_mask)
-        
+
         # encoder-decoder cross attention
         x = self.norm2(dec_out)
         dec_out = dec_out + self.enc_dec_attn(x, enc_out, enc_out, dec_enc_mask)
-        
+
         # position-wise feed-forward networks
         x = self.norm3(dec_out)
         dec_out = dec_out + self.poswise_ffn(x)
@@ -262,7 +230,7 @@ class Decoder(nn.Module):
 
         # position embedding
         self.pos_emb = nn.Embedding.from_pretrained(pos_sinusoid_embedding(tgt_len, dec_dim), freeze=True)
-        
+
         # decoder layers
         self.layers = nn.ModuleList(
             [
@@ -280,7 +248,7 @@ class Decoder(nn.Module):
         # decoder layers
         for layer in self.layers:
             dec_out = layer(dec_out, enc_out, dec_mask, dec_enc_mask)
-        
+
         return dec_out
 
 
@@ -295,32 +263,71 @@ class Transformer(nn.Module):
         self.decoder = decoder
         self.linear = nn.Linear(dec_out_dim, vocab)
 
-    def forward(self, X: torch.Tensor, X_lens: torch.Tensor, labels: torch.Tensor):
-        X_lens, labels = X_lens.long(), labels.long()
-        b = X.size(0)
-        device = X.device
-        
+    @staticmethod
+    def get_len_mask(
+            b: int, max_len: int, feat_lens: torch.Tensor, device: torch.device
+    ) -> torch.Tensor:
+        attn_mask = torch.ones((b, max_len, max_len), device=device)
+        for i in range(b):
+            attn_mask[i, :, :feat_lens[i]] = 0
+        return attn_mask.bool()
+
+    @staticmethod
+    def get_subsequent_mask(b: int, max_len: int, device: torch.device) -> torch.Tensor:
+        """
+        Args:
+            b: batch-size.
+            max_len: the length of the whole seqeunce.
+            device: cuda or cpu.
+        """
+        mask = torch.triu(torch.ones((b, max_len, max_len), device=device), diagonal=1)
+        return mask.bool()
+
+    @staticmethod
+    def get_enc_dec_mask(
+            b: int, max_feat_len: int, feat_lens: torch.Tensor, max_label_len: int, device: torch.device
+    ) -> torch.Tensor:
+        attn_mask = torch.zeros((b, max_label_len, max_feat_len), device=device)  # (b, seq_q, seq_k)
+        for i in range(b):
+            attn_mask[i, :, feat_lens[i]:] = 1
+        return attn_mask.bool()
+
+    def get_encoder_output(self, X: torch.Tensor, X_lens: torch.Tensor):
         # frontend
         out, X_lens = self.frontend(X, X_lens)
-        max_feat_len = out.size(1)  # compute after frontend because of optional subsampling
-        max_label_len = labels.size(1)
-        
         # encoder
-        enc_mask = get_len_mask(b, max_feat_len, X_lens, device)
+        enc_mask = self.get_len_mask(X.size(0), out.size(1), X_lens, X.device)
         enc_out = self.encoder(out, X_lens, enc_mask)
-        
-        # decoder
-        dec_mask = get_subsequent_mask(b, max_label_len, device)
-        dec_enc_mask = get_enc_dec_mask(b, max_feat_len, X_lens, max_label_len, device)
-        dec_out = self.decoder(labels, enc_out, dec_mask, dec_enc_mask)
+        return enc_out, X_lens
 
+    def get_logits(self, enc_out, labels, dec_mask, dec_enc_mask):
+        # decoder
+        dec_out = self.decoder(labels, enc_out, dec_mask, dec_enc_mask)
         # linear
         logits = self.linear(dec_out)
+        return logits
+
+    def forward(self, X: torch.Tensor, X_lens: torch.Tensor, labels: torch.Tensor):
+        b = X.size(0)
+        device = X.device
+        X_lens, labels = X_lens.long(), labels.long()
+
+        # frontend and encoder
+        enc_out, X_lens = self.get_encoder_output(X, X_lens)
+
+        # decoder
+        max_label_len = labels.size(1)
+        max_feat_len = enc_out.size(1)
+        dec_mask = self.get_subsequent_mask(b, max_label_len, device)
+        dec_enc_mask = self.get_enc_dec_mask(b, max_feat_len, X_lens, max_label_len, device)
+        logits = self.get_logits(enc_out, labels, dec_mask, dec_enc_mask)
 
         return logits
 
 
 if __name__ == "__main__":
+    from feature_extractors import LinearFeatureExtractionModel
+
     # constants
     batch_size = 16  # batch size
     max_feat_len = 100  # the maximum length of input sequence

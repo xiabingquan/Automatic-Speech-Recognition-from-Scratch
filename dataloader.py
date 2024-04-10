@@ -2,19 +2,19 @@
 # Contact: bingquanxia@qq.com
 
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import torch
 import torchaudio
 from torch.utils.data import Dataset, DataLoader
 
-from tokenizer import CharTokenizer
+from tokenizer import CharTokenizer, SubwordTokenizer
 
 
 class ASRDataset(Dataset):
     def __init__(
             self, wav_paths: List[str], transcripts: List[str], wav_lengths: List[float],
-            tokenizer: CharTokenizer, batch_size: int, batch_seconds: int, shuffle: bool
+            tokenizer: Union[CharTokenizer, SubwordTokenizer], batch_size: int, batch_seconds: int, shuffle: bool
     ):
         """
         wav_paths: list of paths to wav files
@@ -139,7 +139,7 @@ class ASRDataset(Dataset):
 
 def get_dataloader(
         wav_paths: List[str], transcripts: List[str], wav_lengths: List[float],
-        tokenizer: CharTokenizer,
+        tokenizer: Union[CharTokenizer, SubwordTokenizer],
         batch_size: int, batch_seconds: int,
         shuffle: bool, num_workers: int = 4
 ) -> DataLoader:
