@@ -7,7 +7,7 @@ It aims to serve as a thorough tutorial for new beginners who is interested in t
 
 It contains almost everything you need to build a simple ASR model from scratch, such as training codes, inference codes, checkpoints, training logs and inference logs.
 
-**With this repository, you are expected to learn**:
+**With this repository, you are expected to learn:**
 - How to build a Transformer model from scratch;
 - How to apply Transformer into ASR task;
 - How to pre-process and load audio data;
