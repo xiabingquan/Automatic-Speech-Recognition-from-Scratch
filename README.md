@@ -5,11 +5,13 @@ A minimal Seq2Seq example of Automatic Speech Recognition (ASR) based on Transfo
 
 It aims to serve as a thorough tutorial for new beginners who is interested in training ASR models or other sequence-to-sequence models, complying with the blog in this link [包教包会！从零实现基于Transformer的语音识别(ASR)模型😘](https://zhuanlan.zhihu.com/p/648133707)
 
-It contains almost everything you need to build a simple ASR model from scratch, such as training codes, inference codes, checkpoints, training logs and inference logs, 
+It contains almost everything you need to build a simple ASR model from scratch, such as training codes, inference codes, checkpoints, training logs and inference logs.
+
+
 
 ## Data preprocessing
 
-We use the audip part of [LRS2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html) as our dataset.
+We use the audio part of [LRS2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html) as our dataset.
 
 Before launch training, you should download the train and test sub-sets of LRS2,
 and prepare `./data/LRS2/train.paths`、`./data/LRS2/train.text`、`./data/LRS2/train.lengths` with the format that  `train.py` requires.
@@ -68,6 +70,12 @@ For example, `python3 ./test.py resnet lrs2 ./ckpts/resnet_lrs2_epoch050.pt`
 The checkpoints are located in the `ckpts` directory, containing both the linear and 1D-ResNet feature extractors.
 
 The inference logs are located in the `log` directory, containing predictions of each sample.
+
+We support two types of decoding algorithm: greedy search and beam search, both implemented inside `test.py`.
+
+The log files ends with `lrs2.test.log` contains the inference results of greedy search, while those named with the pattern `test.bms*.log` corresponds to beam search, the number `*` standing for the *beam size* argument used during inference.
+
+
 
 
 ## Warning
