@@ -112,6 +112,7 @@ def beam_search_serial(
 
     return torch.tensor(pred_tokens).long()
 
+
 @torch.no_grad()
 def beam_search_parallel(
         model, fbank_feat, feat_lens, sos_id, eos_id, max_decode_len,
