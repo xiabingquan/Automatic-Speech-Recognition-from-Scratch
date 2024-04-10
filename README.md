@@ -7,7 +7,20 @@ It aims to serve as a thorough tutorial for new beginners who is interested in t
 
 It contains almost everything you need to build a simple ASR model from scratch, such as training codes, inference codes, checkpoints, training logs and inference logs.
 
+With this repository, you are expected to learn:
+- How to build a Transformer model from scratch;
+- How to apply Transformer into ASR task;
+- How to pre-process and load audio data;
+- How to create subword-based tokenizers and use them to process text data;
+- How to train ASR models with [Model Parallel](https://pytorch.org/tutorials/intermediate/model_parallel_tutorial.html);
+- How to perform inference with greedy search and beam search.
 
+To be as readable as possible, this repository does not contain complex components such as Distributed Data Parallel, language model restoring, CTC prefix beam search and so on. 
+
+If you are looking for a high-level ASR library that supports multiple model architecture, decoding algorithms, and training frameworks, this repo may not be the best choice.
+However, if you are eager to learn the basic stuff of ASR, this repo will NOT let you down.
+
+Have fun! 🦦
 
 ## Data preprocessing
 
@@ -73,9 +86,7 @@ The inference logs are located in the `log` directory, containing predictions of
 
 We support two types of decoding algorithm: greedy search and beam search, both implemented inside `test.py`.
 
-The log files ends with `lrs2.test.log` contains the inference results of greedy search, while those named with the pattern `test.bms*.log` corresponds to beam search, the number `*` standing for the *beam size* argument used during inference.
-
-
+> The log files ends with `lrs2.test.log` contains the inference results of greedy search, while those named with the pattern `test.bms*.log` corresponds to beam search, the number `*` standing for the *beam size* argument used during inference.
 
 
 ## Warning
