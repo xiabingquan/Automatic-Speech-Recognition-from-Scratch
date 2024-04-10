@@ -1,13 +1,13 @@
 # Automatic-Speech-Recognition-from-Scratch
 
 ## Description
-A minimal Seq2Seq example of Automatic Speech Recognition (ASR) based on Transformer
+**A minimal Seq2Seq example of Automatic Speech Recognition (ASR) based on Transformer**
 
 It aims to serve as a thorough tutorial for new beginners who is interested in training ASR models or other sequence-to-sequence models, complying with the blog in this link [包教包会！从零实现基于Transformer的语音识别(ASR)模型😘](https://zhuanlan.zhihu.com/p/648133707)
 
 It contains almost everything you need to build a simple ASR model from scratch, such as training codes, inference codes, checkpoints, training logs and inference logs.
 
-With this repository, you are expected to learn:
+**With this repository, you are expected to learn**:
 - How to build a Transformer model from scratch;
 - How to apply Transformer into ASR task;
 - How to pre-process and load audio data;
@@ -98,3 +98,5 @@ This repository is slightly different from the [blog](https://zhuanlan.zhihu.com
 ## Contact
 bingquanxia AT qq.com
 
+## LICENSE
+[MIT](https://opensource.org/license/mit)
