@@ -92,8 +92,8 @@ def beam_search_serial(
 
             # masked finished beams
             if h.finished():
-                topk_logp[1:] = float("-inf")
-                topk_idxs[1:] = eos_id
+                topk_logp.fill_(0.)
+                topk_idxs.fill_(eos_id)
 
             # calculate scores of new beams
             for j in range(bms):
