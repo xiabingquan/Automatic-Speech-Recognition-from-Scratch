@@ -35,7 +35,7 @@ def greedy_search(model, fbank_feat, feat_lens, sos_id, eos_id, max_decode_len):
             break
     pred_tokens = ys_in_pad[0, 1:]  # [: 1:]: remove sos_id
 
-    return pred_tokens
+    return [pred_tokens]
 
 
 @torch.no_grad()
@@ -74,14 +74,15 @@ def beam_search_serial(
         if all([h.finished() for h in hyps]):
             break
 
+        bs = 1      # batch size
         # iterate over all beams
         new_hyps = []
         for h in hyps:
 
             # forward
             l = torch.tensor(h.tokens, device=enc_out.device).view(1, -1)
-            dec_mask = model.get_subsequent_mask(1, l.size(1), l.device)
-            dec_enc_mask = model.get_enc_dec_mask(1, enc_out.size(1), feat_lens, l.size(1), l.device)
+            dec_mask = model.get_subsequent_mask(bs, l.size(1), l.device)
+            dec_enc_mask = model.get_enc_dec_mask(bs, enc_out.size(1), feat_lens, l.size(1), l.device)
             logits = model.get_logits(enc_out, l, dec_mask, dec_enc_mask)
             logits = logits[:, -1]          # (1, T, vocab) -> (1, vocab)
             logp = F.log_softmax(logits, dim=-1)
@@ -92,7 +93,8 @@ def beam_search_serial(
 
             # masked finished beams
             if h.finished():
-                topk_logp.fill_(0.)
+                topk_logp[0] = 0.
+                topk_logp[1:] = float("-inf")
                 topk_idxs.fill_(eos_id)
 
             # calculate scores of new beams
@@ -110,7 +112,7 @@ def beam_search_serial(
     pred_tokens = best_hyp.tokens[1:]  # [: 1:]: remove sos_id
     pred_tokens = [t for t in pred_tokens if t != eos_id]  # remove eos_id
 
-    return torch.tensor(pred_tokens).long()
+    return pred_tokens
 
 
 @torch.no_grad()
@@ -210,11 +212,15 @@ def beam_search_parallel(
         # global pruning
         scores, offset_k_idxs = scores.topk(k=bms, dim=-1)  # (bs, bms)
         scores = scores.view(rns, 1)
+        offset_k_idxs = offset_k_idxs.view(-1)
 
         # calculate the predicted token at current decoding step
         base_k_idxs = torch.arange(bs, device=scores.device) * bms * bms
-        # e.g. base_k_idxs: (0, 0, 0, 9, 9, 9, 27, 27, 27, 36, 36, 36)
+        # wrong implementation:
+        # base_k_idxs = base_k_idxs.repeat(bms).view(-1)
+        # correct implementation:
         base_k_idxs = base_k_idxs.unsqueeze(-1).repeat(1, bms).view(-1)
+        # e.g. base_k_idxs: (0, 0, 0, 9, 9, 9, 81, 81, 81)
         best_k_idxs = base_k_idxs + offset_k_idxs.view(-1)
         best_k_pred = torch.index_select(topk_idxs.view(-1), dim=-1, index=best_k_idxs)
 
@@ -237,9 +243,8 @@ def beam_search_parallel(
     best_hyp_idxs += idxs
     best_hyps = torch.index_select(hyps, dim=0, index=best_hyp_idxs)
 
-    assert best_hyps.size(0) == 1
-    pred_tokens = best_hyps[0, 1:]      # [: 1:]: remove sos_id
-    pred_tokens = pred_tokens[hyp != eos_id]            # remove eos_id
+    pred_tokens = best_hyps[:, 1:]      # [: 1:]: remove sos_id
+    pred_tokens = [hyp[hyp!= eos_id].tolist() for hyp in pred_tokens]            # remove eos_id
 
     return pred_tokens
 
@@ -333,6 +338,7 @@ if __name__ == "__main__":
             )
         else:
             raise ValueError(f"Invalid search strategy: {search_strategy}")
+        pred_tokens = pred_tokens[0]
 
         pred = tokenizer.detokenize(pred_tokens.tolist())
         gt = transcripts[i]
