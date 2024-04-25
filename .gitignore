@@ -1,2 +1,4 @@
+*.pt
 ckpts/*.pt
-./.idea
+.idea
+data/LRS2/test

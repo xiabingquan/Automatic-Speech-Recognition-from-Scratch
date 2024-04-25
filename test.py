@@ -65,6 +65,7 @@ def beam_search_serial(
         hyps[i].score = float("-inf")
 
     # get encoder output
+    assert fbank_feat.size(0) == 1, "Only support batch size 1."
     enc_out, feat_lens = model.get_encoder_output(fbank_feat, feat_lens)
 
     # main loop
@@ -112,7 +113,7 @@ def beam_search_serial(
     pred_tokens = best_hyp.tokens[1:]  # [: 1:]: remove sos_id
     pred_tokens = [t for t in pred_tokens if t != eos_id]  # remove eos_id
 
-    return pred_tokens
+    return [pred_tokens]
 
 
 @torch.no_grad()
@@ -244,7 +245,7 @@ def beam_search_parallel(
     best_hyps = torch.index_select(hyps, dim=0, index=best_hyp_idxs)
 
     pred_tokens = best_hyps[:, 1:]      # [: 1:]: remove sos_id
-    pred_tokens = [hyp[hyp!= eos_id].tolist() for hyp in pred_tokens]            # remove eos_id
+    pred_tokens = [hyp[hyp != eos_id].tolist() for hyp in pred_tokens]            # remove eos_id
 
     return pred_tokens
 
@@ -254,6 +255,9 @@ if __name__ == "__main__":
     if len(sys.argv) != 4:
         print("Usage: python test.py <feature_extractor_type> <dataset_type> <checkpoint_path>")
         sys.exit(1)
+
+    print(f"ARGS: {sys.argv}")
+
     feature_extractor_type = sys.argv[1]
     dataset_type = sys.argv[2]
     ckpt_path = sys.argv[3]
@@ -298,7 +302,7 @@ if __name__ == "__main__":
     num_dec_layers = 6
     model = init_model(vocab, enc_dim, num_enc_layers, num_dec_layers, feature_extractor_type)
     model.eval()
-    ckpt = torch.load(ckpt_path)
+    ckpt = torch.load(ckpt_path, map_location="cpu")
     missing, unexpected = model.load_state_dict(ckpt)
     print(f"Missing keys: {missing}. Unexpected: {unexpected}", flush=True)
     if torch.cuda.is_available():
@@ -318,10 +322,7 @@ if __name__ == "__main__":
     print(f"index  |  ground truth  |  prediction  |  WER (Word Error Rate)", flush=True)
 
     for i, (fbank_feat, feat_lens, ys_in, ys_out) in enumerate(tqdm.tqdm(data_loader)):
-
-        # # debug
-        # if i == 1:
-        #     break
+        assert fbank_feat.size(0) == 1, "Only support batch size 1."
 
         if torch.cuda.is_available():
             fbank_feat = fbank_feat.cuda()
@@ -330,8 +331,8 @@ if __name__ == "__main__":
         if search_strategy == "greedy":
             pred_tokens = greedy_search(model, fbank_feat, feat_lens, sos_id, eos_id, max_decode_len)
         elif search_strategy == "beam_search":
-            # beam_search = beam_search_parallel
-            beam_search = beam_search_serial
+            beam_search = beam_search_parallel
+            # beam_search = beam_search_serial
             pred_tokens = beam_search(
                 model, fbank_feat, feat_lens, sos_id, eos_id, max_decode_len,
                 bms=beam_size
@@ -340,7 +341,7 @@ if __name__ == "__main__":
             raise ValueError(f"Invalid search strategy: {search_strategy}")
         pred_tokens = pred_tokens[0]
 
-        pred = tokenizer.detokenize(pred_tokens.tolist())
+        pred = tokenizer.detokenize(pred_tokens)
         gt = transcripts[i]
 
         n_err = editdistance.eval(gt.split(), pred.split())
