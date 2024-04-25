@@ -57,7 +57,7 @@ Run `build_spm_tokenizer.sh` to build your subword-based tokenizer. You should r
 We have already provided tokenizers, located in the directory `spm/lrs2`. You could use them directly.
 
 
-## training
+## Training
 Usage: `python train.py <feature_extractor_type> <dataset_type>`
 
 We support two types of feature extractors: linear layer and 1D-ResNet18.
@@ -77,7 +77,7 @@ Usage: `python test.py <feature_extractor_type> <dataset_type> <checkpoint_path>
 
 For example, `python3 ./test.py resnet lrs2 ./ckpts/resnet_lrs2_epoch050.pt`
 
-> Use the Linux command `cat` to merge checkpoint shards.
+> Use the **Linux** command `cat` to merge checkpoint shards.
 > For example, `cat resnet_lrs2_epoch050.pt.shard* > ./resnet_lrs2_epoch050.pt`
 
 The checkpoints are located in the `ckpts` directory, containing both the linear and 1D-ResNet feature extractors.
@@ -88,8 +88,15 @@ We support two types of decoding algorithm: greedy search and beam search, both 
 
 > The log files ends with `lrs2.test.log` contains the inference results of greedy search, while those named with the pattern `test.bms*.log` corresponds to beam search, the number `*` standing for the *beam size* argument used during inference.
 
+The inference scripts are tested both under Windows11 and Ubuntu 20.04.6.
+
+- Ubuntu 20.04.6: Python 3.8.16、torch 2.1.0+cu118
+- Windows 11: Python 3.9.0、torch 2.1.0+cpu
+
+
 
 ## Warning
+
 This repository is slightly different from the [blog](https://zhuanlan.zhihu.com/p/648133707) mentioned above in the following aspects.
 - We use pre-norm instead of post-norm;
 - We use subword-based tokenizers instead of char-based tokenizers;
