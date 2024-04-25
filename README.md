@@ -12,7 +12,7 @@ It contains almost everything you need to build a simple ASR model from scratch,
 - How to apply Transformer into ASR task;
 - How to pre-process and load audio data;
 - How to create subword-based tokenizers and use them to process text data;
-- How to train ASR models with [Model Parallel](https://pytorch.org/tutorials/intermediate/model_parallel_tutorial.html);
+- How to train ASR models with [Data Parallel](https://pytorch.org/docs/stable/generated/torch.nn.DataParallel.html);
 - How to perform inference with greedy search and beam search.
 
 To be as readable as possible, this repository does not contain complex components such as Distributed Data Parallel, language model restoring, CTC prefix beam search and so on. 
