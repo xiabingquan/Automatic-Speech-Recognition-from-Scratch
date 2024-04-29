@@ -42,7 +42,7 @@ The following table suggests a minimal example of the above three files.
 | 2.wav       | good afternoon   | 2         |
 | 3.wav       | nice to meet you | 3.1         |
 
-For convenience, we have prepared the three files above, the only thing you need to do is to place audio files consistent with `./data/LRS2/train.paths`. There you are ready to go.
+For convenience, we have prepared the three files above, the only thing you need to do is to place audio files whose paths are consistent with `./data/LRS2/train.paths`. Then you are ready to go.
 
 > 💡 If you have difficulty in accessing dataset LRS2, you may use other ASR datasets, such as [LibriSpeech](https://www.openslr.org/12) or [TEDLIUM-v3](https://www.openslr.org/51/).
 > However, in our preliminary experiments of LibriSpeech, we found that the model fails to converge under the default settings. You may need to modify the training or model hyper-parameters if necessary.
@@ -77,7 +77,7 @@ Usage: `python test.py <feature_extractor_type> <dataset_type> <checkpoint_path>
 
 For example, `python3 ./test.py resnet lrs2 ./ckpts/resnet_lrs2_epoch050.pt`
 
-> Use the **Linux** command `cat` to merge checkpoint shards.
+> Use the **Linux (not Windows)** command `cat` to merge checkpoint shards.
 > For example, `cat resnet_lrs2_epoch050.pt.shard* > ./resnet_lrs2_epoch050.pt`
 
 The checkpoints are located in the `ckpts` directory, containing both the linear and 1D-ResNet feature extractors.
